@@ -22,6 +22,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Note: If you are implementing ServerSelector, you will have to implement the
@@ -46,8 +47,10 @@ type ServerSelector interface {
 
 // ServerList is a simple ServerSelector. Its zero value is usable.
 type ServerList struct {
-	mu    sync.RWMutex
-	addrs []net.Addr
+	mu        sync.RWMutex
+	addrs     []net.Addr
+	rnd       rand.Rand
+	rndInited bool
 }
 
 // staticAddr caches the Network() and String() values from any net.Addr.
@@ -132,7 +135,11 @@ func (ss *ServerList) PickAnyServer() (net.Addr, error) {
 	if len(ss.addrs) == 1 {
 		return ss.addrs[0], nil
 	}
-	return ss.addrs[rand.Intn(len(ss.addrs))], nil
+	if ss.rndInited == false {
+		ss.rnd = *rand.New(rand.NewSource(time.Now().UnixNano()))
+		ss.rndInited = true
+	}
+	return ss.addrs[ss.rnd.Intn(len(ss.addrs))], nil
 
 }
 
